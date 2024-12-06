@@ -19,7 +19,11 @@ project_1_page = st.Page(
     title="Summary",
     icon=":material/bar_chart:",
 )
-
+project_2_page = st.Page(
+    "views/Summary_per_cohort.py",
+    title="Summary_per_cohort",
+    icon=":material/bar_chart:",
+)
 
 # --- NAVIGATION SETUP [WITHOUT SECTIONS] ---
 # pg = st.navigation(pages=[about_page, project_1_page, project_2_page])
@@ -27,10 +31,9 @@ project_1_page = st.Page(
 # --- NAVIGATION SETUP [WITH SECTIONS]---
 pg = st.navigation(
     {
-        "Menu": [about_page, project_1_page],
+        "Menu": [about_page, project_1_page, project_2_page],
     }
 )
-
 
 # --- SHARED ON ALL PAGES ---
 # st.logo("assets/codingisfun_logo.png")
