@@ -10,6 +10,9 @@ import itertools
 import subprocess
 import sys
 import plotly.express as px
+import plotly.graph_objects as go
+import locale
+
 # import gspread
 # from oauth2client.service_account import ServiceAccountCredentials
 # from gspread_dataframe import set_with_dataframe
@@ -69,8 +72,7 @@ balance_sheet_PAA['IFRS_MONTH'] = pd.to_datetime(balance_sheet_PAA['IFRS_MONTH']
 # csm['IFRS_MONTH']               = pd.to_datetime(csm['IFRS_MONTH'], errors='coerce', format='%Y-%m-%d %H:%M:%S')
 csm                             = pd.read_csv("streamlit_output_rev/csm_total.csv")
 csm['IFRS_MONTH']               = pd.to_datetime(csm['IFRS_MONTH'], errors='coerce', format='%Y-%m-%d')
-
-print(csm)
+IFRS_MONTH_list                 = csm["IFRS_MONTH"].unique()
 
 # tes = pd.DataFrame(connect_to_googlesheet('balance_sheet_total', 'tes').get_all_records())
 # st.write(tes)
@@ -117,12 +119,17 @@ st.write("### Data Long Term Product")
 st.write(filtered_df)
 
 st.write("# CSM Roll Forward")
-IFRS_MONTH_csm  = st.selectbox("SELECT DATE", options=list(csm["IFRS_MONTH"].unique()))
-filtered_csm    = csm[csm["IFRS_MONTH"] == IFRS_MONTH_csm]
-value_chart     = filtered_csm['Contractual Service Margin'].tolist()
-value_chart     = [round_school_sig(x, 2) for x in value_chart]
-percentages     = [x / sum(value_chart) * 100 for x in value_chart]
-percentages     = [round_school_sig(x, 2) for x in percentages]
+csm['Contractual Service Margin_Begin'] = csm['Contractual Service Margin'] - csm['Amortisasi_CSM_Release'] - csm['Efek_Perubahan_Varians_n_Asumsi_Ekonomi'] - csm['Accretion_Interest_unwind'] - csm['Kontrak_Baru_Periode_Berjalan']
+csm                                     = csm[["IFRS_MONTH", "NAMA_PRODUK", 
+                                               "Contractual Service Margin_Begin", "Kontrak_Baru_Periode_Berjalan", 
+                                               "Accretion_Interest_unwind", "Efek_Perubahan_Varians_n_Asumsi_Ekonomi", 
+                                               "Amortisasi_CSM_Release", "Contractual Service Margin"]]
+IFRS_MONTH_csm                          = st.selectbox("SELECT DATE", options=list(csm["IFRS_MONTH"].unique()))
+filtered_csm                            = csm[csm["IFRS_MONTH"] == IFRS_MONTH_csm]
+value_chart                             = filtered_csm['Contractual Service Margin'].tolist()
+value_chart                             = [round_school_sig(x, 2) for x in value_chart]
+percentages                             = [x / sum(value_chart) * 100 for x in value_chart]
+percentages                             = [round_school_sig(x, 2) for x in percentages]
 st.write(filtered_csm)
 
 # Sample data
@@ -160,3 +167,42 @@ data = {
 fig = px.line(data, x='IFRS_MONTH', y='CSM', title="CSM MOVEMENT FOR " + PRODUCT_csm_line, markers=True)
 st.plotly_chart(fig)
 
+
+# Input Data
+# st.sidebar.header("Customize the Data")
+# labels = st.sidebar.text_input("Enter labels (comma-separated)", "Revenue,Cost of Goods,Operating Expenses,Net Profit")
+# values = st.sidebar.text_input("Enter values (comma-separated)", "1000,-300,-200,500")
+
+# # Process Input Data
+# labels = [label.strip() for label in labels.split(",")]
+# values = [float(value.strip()) for value in values.split(",")]
+
+waterfall_df            = csm[csm["IFRS_MONTH"] == IFRS_MONTH_csm]
+waterfall_df            = waterfall_df[waterfall_df["NAMA_PRODUK"] == PRODUCT_csm_line]
+waterfall_df            = waterfall_df.reset_index(drop=True)
+
+labels = csm.columns
+labels = labels[2:]
+values = [waterfall_df.loc[0, 'Contractual Service Margin_Begin'], waterfall_df.loc[0, 'Kontrak_Baru_Periode_Berjalan'], 
+          waterfall_df.loc[0, 'Accretion_Interest_unwind'], waterfall_df.loc[0, 'Efek_Perubahan_Varians_n_Asumsi_Ekonomi'],  
+          waterfall_df.loc[0, 'Amortisasi_CSM_Release'], waterfall_df.loc[0, 'Contractual Service Margin']]
+
+# Create Waterfall Chart
+fig = go.Figure(go.Waterfall(
+    orientation="v",
+    measure=["relative"] * (len(values) - 1) + ["total"],
+    x=labels,
+    y=values,
+    text=['{:,.2f}'.format(v) for v in values],  # Add values as text on the bars
+    textposition="outside",         # Position text outside the bars
+    connector={"line": {"color": "rgba(63, 63, 63, 0.5)"}},
+))
+
+fig.update_layout(
+    title="Waterfall Chart - CSM Movement in " + str(IFRS_MONTH_csm),
+    showlegend=False,
+    template="plotly_white"
+)
+
+# Display Chart
+st.plotly_chart(fig)
