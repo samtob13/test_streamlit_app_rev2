@@ -16,6 +16,15 @@ import plotly.express as px
 # import toml
 # import json
 
+def round_school(x):
+    i, f = divmod(x, 1)
+    return int(i + ((f >= 0.5) if (x > 0) else (f > 0.5)))
+
+def round_school_sig(x,y):
+    x    = int(x * 10 ** (y + 1)) / 10
+    i, f = divmod(x, 1)
+    return int(i + ((f >= 0.5) if (x > 0) else (f > 0.5))) / (10 ** y)
+
 # secrets = toml.load(".streamlit/secrets.toml")
 # credentials_json = secrets["google_service_account"]["credentials"]
 # credentials_dict = json.loads(credentials_json)
@@ -111,7 +120,9 @@ st.write("# CSM Roll Forward")
 IFRS_MONTH_csm  = st.selectbox("SELECT DATE", options=list(csm["IFRS_MONTH"].unique()))
 filtered_csm    = csm[csm["IFRS_MONTH"] == IFRS_MONTH_csm]
 value_chart     = filtered_csm['Contractual Service Margin'].tolist()
+value_chart     = [round_school_sig(x, 2) for x in value_chart]
 percentages     = [x / sum(value_chart) * 100 for x in value_chart]
+percentages     = [round_school_sig(x, 2) for x in percentages]
 st.write(filtered_csm)
 
 # Sample data
@@ -134,13 +145,15 @@ st.dataframe(data, use_container_width=True)
 
 PRODUCT_csm_line    = st.selectbox("SELECT PRODUCT", options=list(csm["NAMA_PRODUK"].unique()))
 filtered_csm_line   = csm[csm["NAMA_PRODUK"] == PRODUCT_csm_line]
+csm_end_value       = filtered_csm_line['Contractual Service Margin'].tolist()
+csm_end_value       = [round_school(x) for x in csm_end_value]
 
 st.title("CSM MOVEMENT OVER TIME")
 
 # Create sample data
 data = {
     'IFRS_MONTH': filtered_csm_line['IFRS_MONTH'].tolist(),
-    'CSM'       : filtered_csm_line['Contractual Service Margin'].tolist()
+    'CSM'       : csm_end_value
 }
 
 # Create the line chart
